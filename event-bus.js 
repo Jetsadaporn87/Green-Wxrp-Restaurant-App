@@ -1,0 +1,13 @@
+// สร้าง event bus
+const eventBus = new EventBus();
+
+// สมัครรับข้อมูลเหตุการณ์ "my-event"
+eventBus.on("my-event", (data) => {
+  console.log(`ได้รับข้อมูล: ${data}`);
+});
+
+// ทริกเกอร์เหตุการณ์ "my-event"
+eventBus.trigger("my-event", { message: "Hello, world!" });
+
+// ยกเลิกการสมัครรับข้อมูลจากเหตุการณ์ "my-event"
+eventBus.off("my-event");
