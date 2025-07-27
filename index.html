@@ -21,6 +21,7 @@
           <button class="nav-tab" onclick="showTab('order')">สั่งอาหาร</button>
           <button class="nav-tab" onclick="showTab('status')">สถานะ</button>
           <button class="nav-tab" onclick="showTab('member')">สมาชิก</button>
+          <button id="admin-tab" class="nav-tab" onclick="showTab('admin')" style="display: none;">แอดมิน</button>
       </div>
 
       <!-- Menu Tab -->
@@ -41,6 +42,11 @@
       <!-- Member Tab -->
       <div id="member-tab" class="tab-content">
           <!-- Member content will be loaded from member.html -->
+      </div>
+
+      <!-- Admin Tab -->
+      <div id="admin-tab-content" class="tab-content">
+          <!-- Admin content will be loaded from admin-panel.html -->
       </div>
 
       <!-- Cart Summary (Fixed Bottom) -->
@@ -93,6 +99,8 @@
               loadContent('status-tab', 'status.html');
           } else if (tabName === 'member') {
               loadContent('member-tab', 'member.html');
+          } else if (tabName === 'admin') {
+              loadContent('admin-tab-content', 'admin-panel.html');
           } else {
               loadContent('menu-tab', 'menu.html');
           }
@@ -111,6 +119,14 @@
           liff.getProfile().then(profile => {
               document.getElementById('customer-name').value = profile.displayName;
               console.log('User profile:', profile);
+
+              fetch(`${SCRIPT_URL}?action=isAdmin&userId=${profile.userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.isAdmin) {
+                        document.getElementById('admin-tab').style.display = 'block';
+                    }
+                });
           }).catch(err => {
               console.error('Error getting profile:', err);
           });
