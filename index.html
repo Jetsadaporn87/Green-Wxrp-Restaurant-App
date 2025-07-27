@@ -117,7 +117,7 @@
       }
 
       // Submit Order
-      async function submitOrder() {
+      async function submitOrderAndPay() {
           const customerName = document.getElementById('customer-name').value;
           const customerPhone = document.getElementById('customer-phone').value;
           const orderNotes = document.getElementById('order-notes').value;
@@ -162,34 +162,9 @@
               const result = await submitOrder(orderData);
 
               if (result.success) {
-                  // Show success message
-                  document.getElementById('loading').style.display = 'none';
-
-                  const successDiv = document.createElement('div');
-                  successDiv.className = 'success-message';
-                  successDiv.innerHTML = `
-                      <h3>✅ สั่งซื้อสำเร็จ!</h3>
-                      <p>หมายเลขคำสั่งซื้อ: <strong>${result.orderId}</strong></p>
-                      <p>เราจะติดต่อกลับภายใน 5-10 นาที</p>
-                  `;
-
-                  document.getElementById('order-tab').insertBefore(
-                      successDiv,
-                      document.querySelector('.order-form')
-                  );
-
-                  // Clear cart
-                  cart = [];
-                  updateCartSummary();
-
-                  // Send LINE message
-                  if (liff.isApiAvailable('shareTargetPicker')) {
-                      liff.shareTargetPicker([{
-                          type: 'text',
-                          text: `🌱 Green Wxrp - คำสั่งซื้อ #${result.orderId}\n\nขอบคุณที่สั่งอาหารกับเรา!\nเราจะเตรียมอาหารให้คุณในไม่ช้า 🥗`
-                      }]);
-                  }
-
+                  // Redirect to payment page
+                  const orderDataString = encodeURIComponent(JSON.stringify(orderData));
+                  window.location.href = `payment.html?orderData=${orderDataString}`;
               } else {
                   throw new Error(result.message || 'เกิดข้อผิดพลาด');
               }

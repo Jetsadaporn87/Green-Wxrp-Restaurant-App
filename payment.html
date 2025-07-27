@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Green Wxrp Payment System</title>
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/lucide-react@0.263.1/dist/lucide-react.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { QrCode, Upload, CheckCircle, Clock, Bell, Copy } = lucide;
+
+        const Button = ({ children, ...props }) => <button {...props}>{children}</button>;
+        const Card = ({ children, ...props }) => <div {...props}>{children}</div>;
+        const CardContent = ({ children, ...props }) => <div {...props}>{children}</div>;
+        const CardHeader = ({ children, ...props }) => <div {...props}>{children}</div>;
+        const CardTitle = ({ children, ...props }) => <div {...props}>{children}</div>;
+        const Input = ({ ...props }) => <input {...props} />;
+        const Badge = ({ children, ...props }) => <span {...props}>{children}</span>;
+        const Alert = ({ children, ...props }) => <div {...props}>{children}</div>;
+        const AlertDescription = ({ children, ...props }) => <div {...props}>{children}</div>;
+
+        const PaymentSystem = () => {
+            const [orderData, setOrderData] = useState(null);
+            const [slipFile, setSlipFile] = useState(null);
+            const [promptPayPhone] = useState('0987654321');
+
+            useEffect(() => {
+                const urlParams = new URLSearchParams(window.location.search);
+                const orderDataString = urlParams.get('orderData');
+                if (orderDataString) {
+                    setOrderData(JSON.parse(decodeURIComponent(orderDataString)));
+                }
+            }, []);
+
+            const generatePromptPayQR = (phone, amount) => {
+                return `https://promptpay.io/${phone}/${amount}`;
+            };
+
+            const handleSlipUpload = (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    setSlipFile(file);
+                    setPaymentStep(3);
+                    sendNotificationToStaff();
+                }
+            };
+
+            const sendNotificationToStaff = async () => {
+                const message = `New payment submitted for order ${orderData.orderId}. Please verify.`;
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'sendStaffNotification',
+                        data: { message }
+                    })
+                });
+            };
+
+            const copyPromptPayNumber = () => {
+                navigator.clipboard.writeText(promptPayPhone);
+                alert('คัดลอกเบอร์ PromptPay แล้ว!');
+            };
+
+            const confirmPayment = async () => {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'updateOrderStatus',
+                        data: { orderId: orderData.orderId, status: 'paid' }
+                    })
+                });
+                setPaymentStep(4);
+            };
+
+            if (!orderData) {
+                return <div>Loading...</div>;
+            }
+
+            return (
+                <div className="max-w-md mx-auto bg-white min-h-screen">
+                    <div className="bg-green-600 text-white p-4">
+                        <h1 className="text-xl font-bold">Green Wxrp</h1>
+                        <p className="text-sm opacity-90">ระบบชำระเงิน</p>
+                    </div>
+
+                    <Card className="m-4">
+                        <CardHeader>
+                            <CardTitle className="text-lg">สรุปคำสั่งซื้อ #{orderData.orderId}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {orderData.items.map((item, index) => (
+                                <div key={index} className="flex justify-between py-2 border-b">
+                                    <span>{item.name} x{item.quantity}</span>
+                                    <span>{item.price * item.quantity} ฿</span>
+                                </div>
+                            ))}
+                            <div className="flex justify-between py-3 font-bold text-lg border-t mt-2">
+                                <span>รวมทั้งหมด</span>
+                                <span className="text-green-600">{orderData.total} ฿</span>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <div className="p-4">
+                        {paymentStep === 1 && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <QrCode className="w-5 h-5" />
+                                        ชำระเงินผ่าน PromptPay
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="text-center">
+                                    <div className="bg-gray-100 p-8 rounded-lg mb-4">
+                                        <div className="w-48 h-48 mx-auto bg-white border-2 border-dashed border-gray-300 flex items-center justify-center">
+                                            <QrCode className="w-16 h-16 text-gray-400" />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <p className="text-sm text-gray-600">สแกน QR Code หรือโอนเงินไปที่</p>
+                                        <div className="flex items-center justify-center gap-2 bg-gray-50 p-3 rounded">
+                                            <span className="font-mono text-lg">{promptPayPhone}</span>
+                                            <Button size="sm" variant="outline" onClick={copyPromptPayNumber}>
+                                                <Copy className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                        <p className="font-bold text-xl text-green-600">จำนวน {orderData.total} บาท</p>
+                                    </div>
+
+                                    <Button
+                                        className="w-full mt-4"
+                                        onClick={() => setPaymentStep(2)}
+                                    >
+                                        ชำระเงินแล้ว
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {paymentStep === 2 && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <Upload className="w-5 h-5" />
+                                        อัพโหลดสลิปการโอนเงิน
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                                        <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                                        <p className="text-gray-600 mb-4">เลือกไฟล์สลิปการโอนเงิน</p>
+                                        <Input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleSlipUpload}
+                                            className="hidden"
+                                            id="slip-upload"
+                                        />
+                                        <Button asChild>
+                                            <label htmlFor="slip-upload" className="cursor-pointer">
+                                                เลือกไฟล์
+                                            </label>
+                                        </Button>
+                                    </div>
+
+                                    <Alert className="mt-4">
+                                        <Bell className="w-4 h-4" />
+                                        <AlertDescription>
+                                            หลังจากอัพโหลดสลิป ระบบจะแจ้งเตือนพนักงานเพื่อตรวจสอบการชำระเงิน
+                                        </AlertDescription>
+                                    </Alert>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {paymentStep === 3 && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <Clock className="w-5 h-5 text-yellow-500" />
+                                        รอการตรวจสอบ
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="text-center">
+                                    <div className="py-8">
+                                        <Clock className="w-16 h-16 mx-auto text-yellow-500 mb-4" />
+                                        <h3 className="text-lg font-semibold mb-2">กำลังตรวจสอบการชำระเงิน</h3>
+                                        <p className="text-gray-600 mb-4">
+                                            ระบบได้แจ้งเตือนพนักงานแล้ว<br />
+                                            โปรดรอสักครู่...
+                                        </p>
+                                        <Badge variant="outline" className="text-yellow-600">
+                                            สถานะ: รอตรวจสอบ
+                                        </Badge>
+                                    </div>
+
+                                    {slipFile && (
+                                        <div className="mt-4 p-3 bg-gray-50 rounded">
+                                            <p className="text-sm text-gray-600">ไฟล์ที่อัพโหลด:</p>
+                                            <p className="font-medium">{slipFile.name}</p>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {paymentStep === 4 && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2 text-green-600">
+                                        <CheckCircle className="w-5 h-5" />
+                                        ชำระเงินสำเร็จ
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="text-center">
+                                    <CheckCircle className="w-16 h-16 mx-auto text-green-500 mb-4" />
+                                    <h3 className="text-lg font-semibold mb-2">การชำระเงินสำเร็จ!</h3>
+                                    <p className="text-gray-600 mb-4">
+                                        ขอบคุณสำหรับการสั่งซื้อ<br />
+                                        เราจะจัดส่งสินค้าให้เร็วที่สุด
+                                    </p>
+                                    <Badge className="bg-green-500">
+                                        สถานะ: ชำระเงินแล้ว
+                                    </Badge>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
+
+                    <div className="fixed bottom-4 right-4">
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={confirmPayment}
+                            className="bg-blue-50 text-blue-600"
+                        >
+                            [Demo] ยืนยันการชำระเงิน
+                        </Button>
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<PaymentSystem />, document.getElementById('root'));
+    </script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<div class="ranking-container">
+    <div class="ranking-filters">
+        <select id="tier-filter" onchange="filterRanking()">
+            <option value="all">All Tiers</option>
+            <option value="Silver">Silver</option>
+            <option value="Gold">Gold</option>
+            <option value="Diamond">Diamond</option>
+        </select>
+        <select id="time-filter" onchange="filterRanking()">
+            <option value="all-time">All Time</option>
+            <option value="monthly">This Month</option>
+            <option value="weekly">This Week</option>
+        </select>
+    </div>
+    <div class="campaign-timer">
+        <h2>Campaign Ends In:</h2>
+        <div id="timer"></div>
+    </div>
+    <div class="ranking-table">
+        <h2>Customer Ranking</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Name</th>
+                    <th>Total Purchase</th>
+                </tr>
+            </thead>
+            <tbody id="ranking-body">
+                <!-- Ranking data will be loaded here -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    async function getRanking() {
+        const response = await fetch(`${SCRIPT_URL}?action=getRanking`);
+        const ranking = await response.json();
+        return ranking;
+    }
+
+    async function getCampaignEndTime() {
+        const response = await fetch(`${SCRIPT_URL}?action=getCampaignEndTime`);
+        const endTime = await response.text();
+        return new Date(endTime).getTime();
+    }
+
+    getCampaignEndTime().then(campaignEndTime => {
+        function updateTimer() {
+            const now = new Date().getTime();
+            const distance = campaignEndTime - now;
+
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            document.getElementById('timer').innerHTML = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+
+            if (distance < 0) {
+                clearInterval(timerInterval);
+                document.getElementById('timer').innerHTML = "CAMPAIGN ENDED";
+            }
+        }
+
+        const timerInterval = setInterval(updateTimer, 1000);
+    });
+
+    function filterRanking() {
+        const tierFilter = document.getElementById('tier-filter').value;
+        const timeFilter = document.getElementById('time-filter').value;
+        getRanking(tierFilter, timeFilter).then(rankingData => {
+            const rankingBody = document.getElementById('ranking-body');
+            rankingBody.innerHTML = '';
+            rankingData.forEach((customer, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${customer.name}</td>
+                    <td>฿${customer.total_purchase}</td>
+                `;
+                rankingBody.appendChild(row);
+            });
+        });
+    }
+
+    async function getRanking(tier = 'all', time = 'all-time') {
+        const response = await fetch(`${SCRIPT_URL}?action=getRanking&tier=${tier}&time=${time}`);
+        const ranking = await response.json();
+        return ranking;
+    }
+
+    getRanking().then(rankingData => {
+        const rankingBody = document.getElementById('ranking-body');
+        rankingData.forEach((customer, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${customer.name}</td>
+                <td>฿${customer.total_purchase}</td>
+            `;
+            rankingBody.appendChild(row);
+        });
+    });
+</script>
