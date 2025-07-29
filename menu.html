@@ -1,0 +1,40 @@
+<div class="menu-category">
+    <div class="category-title">🥗 Signature Wraps</div>
+    <div id="signature-wraps"></div>
+</div>
+
+<div class="menu-category">
+    <div class="category-title">🥤 Healthy Beverages</div>
+    <div id="healthy-beverages"></div>
+</div>
+
+<script>
+    getProducts().then(products => {
+        const signatureWraps = document.getElementById('signature-wraps');
+        const healthyBeverages = document.getElementById('healthy-beverages');
+
+        products.forEach(product => {
+            if (product.is_active) {
+                const item = document.createElement('div');
+                item.className = 'menu-item';
+                item.innerHTML = `
+                    <div class="item-image">
+                        <img src="${product.image_url}" alt="${product.name_en}" style="width: 100%; height: 100%; object-fit: cover;">
+                    </div>
+                    <div class="item-details">
+                        <div class="item-name">${product.name_th} <span class="eco-badge">${product.is_vegan ? '🌱 Vegan' : ''} ${product.is_organic ? '🌿 Organic' : ''}</span></div>
+                        <div class="item-description">${product.calories} kcal</div>
+                        <div class="item-price">฿${product.price}</div>
+                        <button class="add-btn" onclick="addToCart('${product.product_id}', ${product.price})">เพิ่มลงตะกร้า</button>
+                    </div>
+                `;
+
+                if (product.category === 'Signature Wraps') {
+                    signatureWraps.appendChild(item);
+                } else if (product.category === 'Healthy Beverages') {
+                    healthyBeverages.appendChild(item);
+                }
+            }
+        });
+    });
+</script>

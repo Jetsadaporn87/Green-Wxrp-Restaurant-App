@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Green Wxrp - Healthy Wraps</title>
+  <link rel="stylesheet" href="assets/css/main.css">
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body>
+  <div class="container">
+      <!-- Header -->
+      <div class="header">
+          <div class="logo">🌱 Green Wxrp</div>
+          <div class="tagline">Healthy Wraps • Sustainable Living</div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="nav-tabs">
+          <button class="nav-tab active" onclick="showTab('menu')">เมนู</button>
+          <button class="nav-tab" onclick="showTab('order')">สั่งอาหาร</button>
+          <button class="nav-tab" onclick="showTab('status')">สถานะ</button>
+          <button class="nav-tab" onclick="showTab('member')">สมาชิก</button>
+          <button id="admin-tab" class="nav-tab" onclick="showTab('admin')" style="display: none;">แอดมิน</button>
+      </div>
+
+      <!-- Menu Tab -->
+      <div id="menu-tab" class="tab-content active">
+          <!-- Menu content will be dynamically loaded here -->
+      </div>
+
+      <!-- Order Tab -->
+      <div id="order-tab" class="tab-content">
+          <!-- Order form content will be dynamically loaded here -->
+      </div>
+
+      <!-- Status Tab -->
+      <div id="status-tab" class="tab-content">
+          <!-- Status content will be loaded from status.html -->
+      </div>
+
+      <!-- Member Tab -->
+      <div id="member-tab" class="tab-content">
+          <!-- Member content will be loaded from member.html -->
+      </div>
+
+      <!-- Admin Tab -->
+      <div id="admin-tab-content" class="tab-content">
+          <!-- Admin content will be loaded from admin-panel.html -->
+      </div>
+
+      <!-- Cart Summary (Fixed Bottom) -->
+      <div class="cart-summary" id="cart-summary" style="display: none;">
+          <div class="cart-info">
+              <span id="cart-count">0</span> รายการ • <span id="cart-total">฿0</span>
+          </div>
+          <button class="checkout-btn" onclick="showTab('order')">ดูตะกร้า</button>
+      </div>
+  </div>
+
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/cart.js"></script>
+  <script src="assets/js/liff.js"></script>
+  <script>
+      // LIFF Initialization
+      window.onload = function() {
+          liff.init({
+              liffId: 'YOUR_LIFF_ID' // Replace with actual LIFF ID
+          }).then(() => {
+              console.log('LIFF initialized');
+              if (liff.isLoggedIn()) {
+                  getUserProfile();
+              }
+              loadContent('menu-tab', 'menu.html'); // Load default tab
+          }).catch((err) => {
+              console.error('LIFF initialization failed', err);
+          });
+      };
+
+      // Tab Navigation
+      function showTab(tabName) {
+          // Hide all tabs
+          document.querySelectorAll('.tab-content').forEach(tab => {
+              tab.classList.remove('active');
+          });
+          document.querySelectorAll('.nav-tab').forEach(tab => {
+              tab.classList.remove('active');
+          });
+
+          // Show selected tab
+          document.getElementById(tabName + '-tab').classList.add('active');
+          event.target.classList.add('active');
+
+          if (tabName === 'order') {
+              loadContent('order-tab', 'order.html').then(() => {
+                  updateOrderSummary();
+              });
+          } else if (tabName === 'status') {
+              loadContent('status-tab', 'status.html');
+          } else if (tabName === 'member') {
+              loadContent('member-tab', 'member.html');
+          } else if (tabName === 'admin') {
+              loadContent('admin-tab-content', 'admin-panel.html');
+          } else {
+              loadContent('menu-tab', 'menu.html');
+          }
+      }
+
+      function loadContent(elementId, url) {
+        return fetch(url)
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById(elementId).innerHTML = data;
+            });
+      }
+
+      // Get User Profile from LINE
+      function getUserProfile() {
+          liff.getProfile().then(profile => {
+              document.getElementById('customer-name').value = profile.displayName;
+              console.log('User profile:', profile);
+
+              fetch(`${SCRIPT_URL}?action=isAdmin&userId=${profile.userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.isAdmin) {
+                        document.getElementById('admin-tab').style.display = 'block';
+                    }
+                });
+          }).catch(err => {
+              console.error('Error getting profile:', err);
+          });
+      }
+
+      // Submit Order
+      async function submitOrderAndPay() {
+          const customerName = document.getElementById('customer-name').value;
+          const customerPhone = document.getElementById('customer-phone').value;
+          const orderNotes = document.getElementById('order-notes').value;
+          const deliveryAddress = document.getElementById('delivery-address').value;
+
+          if (!customerName || !customerPhone) {
+              alert('กรุณากรอกชื่อและเบอร์โทรศัพท์');
+              return;
+          }
+
+          if (selectedDelivery === 'delivery' && !deliveryAddress) {
+              alert('กรุณากรอกที่อยู่สำหรับจัดส่ง');
+              return;
+          }
+
+          if (cart.length === 0) {
+              alert('กรุณาเลือกอาหารก่อนสั่งซื้อ');
+              return;
+          }
+
+          // Show loading
+          document.getElementById('loading').style.display = 'block';
+
+          const orderData = {
+              customer: {
+                  name: customerName,
+                  phone: customerPhone,
+                  lineUserId: liff.getContext().userId
+              },
+              items: cart,
+              delivery: {
+                  type: selectedDelivery,
+                  address: deliveryAddress,
+                  fee: selectedDelivery === 'delivery' ? 30 : 0
+              },
+              notes: orderNotes,
+              total: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + (selectedDelivery === 'delivery' ? 30 : 0),
+              timestamp: new Date().toISOString()
+          };
+
+          try {
+              const result = await submitOrder(orderData);
+
+              if (result.success) {
+                  // Redirect to payment page
+                  const orderDataString = encodeURIComponent(JSON.stringify(orderData));
+                  window.location.href = `payment.html?orderData=${orderDataString}`;
+              } else {
+                  throw new Error(result.message || 'เกิดข้อผิดพลาด');
+              }
+
+          } catch (error) {
+              document.getElementById('loading').style.display = 'none';
+              alert('เกิดข้อผิดพลาด: ' + error.message);
+              console.error('Order submission error:', error);
+          }
+      }
+  </script>
+</body>
+</html>

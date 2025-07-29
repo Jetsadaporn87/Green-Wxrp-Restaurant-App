@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Green Wxrp Admin Panel</title>
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/lucide-react@0.263.1/dist/lucide-react.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { CheckCircle, XCircle, Clock, Eye, Search, Filter, Bell, Download, RefreshCw, User, Calendar, DollarSign, Package } = lucide;
+
+        const Button = ({ children, ...props }) => <button {...props}>{children}</button>;
+        const Card = ({ children, ...props }) => <div {...props}>{children}</div>;
+        const CardContent = ({ children, ...props }) => <div {...props}>{children}</div>;
+        const CardHeader = ({ children, ...props }) => <div {...props}>{children}</div>;
+        const CardTitle = ({ children, ...props }) => <div {...props}>{children}</div>;
+        const Input = ({ ...props }) => <input {...props} />;
+        const Badge = ({ children, ...props }) => <span {...props}>{children}</span>;
+        const Alert = ({ children, ...props }) => <div {...props}>{children}</div>;
+        const AlertDescription = ({ children, ...props }) => <div {...props}>{children}</div>;
+        const Select = ({ children, ...props }) => <select {...props}>{children}</select>;
+        const SelectContent = ({ children, ...props }) => <div {...props}>{children}</div>;
+        const SelectItem = ({ children, ...props }) => <option {...props}>{children}</option>;
+        const SelectTrigger = ({ children, ...props }) => <div {...props}>{children}</div>;
+        const SelectValue = ({ children, ...props }) => <div {...props}>{children}</div>;
+
+        const AdminPanel = () => {
+            const [selectedTab, setSelectedTab] = useState('pending');
+            const [searchTerm, setSearchTerm] = useState('');
+            const [filterStatus, setFilterStatus] = useState('all');
+            const [selectedOrder, setSelectedOrder] = useState(null);
+            const [notifications, setNotifications] = useState(3);
+
+            const [orders, setOrders] = useState([]);
+
+            useEffect(() => {
+                fetch(`${SCRIPT_URL}?action=getOrders`)
+                    .then(response => response.json())
+                    .then(data => setOrders(data));
+            }, []);
+
+            const handleApprove = async (orderId) => {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'updateOrderStatus',
+                        data: { orderId, status: 'approved' }
+                    })
+                });
+                setOrders(orders.map(order =>
+                    order.id === orderId
+                        ? { ...order, status: 'approved' }
+                        : order
+                ));
+            };
+
+            const handleReject = async (orderId) => {
+                const reason = prompt('เหตุผลในการปฏิเสธ:', '');
+                if (reason !== null) {
+                    await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'updateOrderStatus',
+                            data: { orderId, status: 'rejected', reason }
+                        })
+                    });
+                    setOrders(orders.map(order =>
+                        order.id === orderId
+                            ? { ...order, status: 'rejected', rejectedReason: reason }
+                            : order
+                    ));
+                }
+            };
+
+            const getStatusBadge = (status) => {
+                switch(status) {
+                case 'pending':
+                    return <Badge variant="outline" className="text-yellow-600 border-yellow-300">รอตรวจสอบ</Badge>;
+                case 'approved':
+                    return <Badge className="bg-green-500">อนุมัติแล้ว</Badge>;
+                case 'rejected':
+                    return <Badge variant="destructive">ปฏิเสธ</Badge>;
+                default:
+                    return <Badge variant="outline">ไม่ทราบสถานะ</Badge>;
+                }
+            };
+
+            const filteredOrders = orders.filter(order => {
+                const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                    order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                    order.customerPhone.includes(searchTerm);
+                const matchesFilter = filterStatus === 'all' || order.status === filterStatus;
+                const matchesTab = selectedTab === 'all' || order.status === selectedTab;
+
+                return matchesSearch && matchesFilter && matchesTab;
+            });
+
+            const stats = {
+                pending: orders.filter(o => o.status === 'pending').length,
+                approved: orders.filter(o => o.status === 'approved').length,
+                rejected: orders.filter(o => o.status === 'rejected').length,
+                totalRevenue: orders.filter(o => o.status === 'approved').reduce((sum, o) => sum + o.total, 0)
+            };
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    <div className="bg-white shadow-sm border-b">
+                        <div className="max-w-7xl mx-auto px-4 py-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h1 className="text-2xl font-bold text-gray-900">Green Wxrp Admin</h1>
+                                    <p className="text-sm text-gray-600">ระบบจัดการคำสั่งซื้อและการชำระเงิน</p>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <Button variant="outline" size="sm">
+                                        <RefreshCw className="w-4 h-4 mr-2" />
+                                        รีเฟรช
+                                    </Button>
+                                    <div className="relative">
+                                        <Bell className="w-6 h-6 text-gray-600" />
+                                        {notifications > 0 && (
+                                            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                                                {notifications}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <User className="w-6 h-6 text-gray-600" />
+                                        <span className="text-sm font-medium">Admin</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="max-w-7xl mx-auto px-4 py-6">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                            <Card>
+                                <CardContent className="p-6">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-600">รอตรวจสอบ</p>
+                                            <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
+                                        </div>
+                                        <Clock className="w-8 h-8 text-yellow-600" />
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card>
+                                <CardContent className="p-6">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-600">อนุมัติแล้ว</p>
+                                            <p className="text-2xl font-bold text-green-600">{stats.approved}</p>
+                                        </div>
+                                        <CheckCircle className="w-8 h-8 text-green-600" />
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card>
+                                <CardContent className="p-6">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-600">ปฏิเสธ</p>
+                                            <p className="text-2xl font-bold text-red-600">{stats.rejected}</p>
+                                        </div>
+                                        <XCircle className="w-8 h-8 text-red-600" />
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card>
+                                <CardContent className="p-6">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-600">ยอดขายรวม</p>
+                                            <p className="text-2xl font-bold text-blue-600">{stats.totalRevenue.toLocaleString()} ฿</p>
+                                        </div>
+                                        <DollarSign className="w-8 h-8 text-blue-600" />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                        <Card className="mb-6">
+                            <CardContent className="p-6">
+                                <div className="flex flex-col md:flex-row gap-4">
+                                    <div className="flex-1">
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                            <Input
+                                                placeholder="ค้นหาด้วยรหัสคำสั่งซื้อ, ชื่อลูกค้า, หรือเบอร์โทร..."
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                                className="pl-10"
+                                            />
+                                        </div>
+                                    </div>
+                                    <Select value={filterStatus} onValueChange={setFilterStatus}>
+                                        <SelectTrigger className="w-48">
+                                            <SelectValue placeholder="กรองตามสถานะ" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">ทุกสถานะ</SelectItem>
+                                            <SelectItem value="pending">รอตรวจสอบ</SelectItem>
+                                            <SelectItem value="approved">อนุมัติแล้ว</SelectItem>
+                                            <SelectItem value="rejected">ปฏิเสธ</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <div className="flex gap-2 mb-6">
+                            <Button
+                                variant={selectedTab === 'pending' ? 'default' : 'outline'}
+                                onClick={() => setSelectedTab('pending')}
+                                className="relative"
+                            >
+                                รอตรวจสอบ
+                                {stats.pending > 0 && (
+                                <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-1">
+                                    {stats.pending}
+                                </span>
+                                )}
+                            </Button>
+                            <Button
+                                variant={selectedTab === 'approved' ? 'default' : 'outline'}
+                                onClick={() => setSelectedTab('approved')}
+                            >
+                                อนุมัติแล้ว
+                            </Button>
+                            <Button
+                                variant={selectedTab === 'rejected' ? 'default' : 'outline'}
+                                onClick={() => setSelectedTab('rejected')}
+                            >
+                                ปฏิเสธ
+                            </Button>
+                            <Button
+                                variant={selectedTab === 'all' ? 'default' : 'outline'}
+                                onClick={() => setSelectedTab('all')}
+                            >
+                                ทั้งหมด
+                            </Button>
+                        </div>
+
+                        <div className="space-y-4">
+                            {filteredOrders.length === 0 ? (
+                                <Card>
+                                    <CardContent className="p-12 text-center">
+                                        <Package className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+                                        <h3 className="text-lg font-medium text-gray-900 mb-2">ไม่พบคำสั่งซื้อ</h3>
+                                        <p className="text-gray-600">ไม่มีคำสั่งซื้อที่ตรงกับเงื่อนไขการค้นหา</p>
+                                    </CardContent>
+                                </Card>
+                            ) : (
+                                filteredOrders.map((order) => (
+                                <Card key={order.id} className="hover:shadow-md transition-shadow">
+                                    <CardContent className="p-6">
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <h3 className="text-lg font-semibold">#{order.id}</h3>
+                                            {getStatusBadge(order.status)}
+                                            {order.status === 'pending' && (
+                                            <Badge variant="outline" className="text-red-600 border-red-300 animate-pulse">
+                                                ใหม่!
+                                            </Badge>
+                                            )}
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                            <div>
+                                            <p className="text-sm text-gray-600">ลูกค้า</p>
+                                            <p className="font-medium">{order.customerName}</p>
+                                            <p className="text-sm text-gray-600">{order.customerPhone}</p>
+                                            </div>
+                                            <div>
+                                            <p className="text-sm text-gray-600">เวลาชำระเงิน</p>
+                                            <p className="font-medium">{order.paymentTime}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="mb-4">
+                                            <p className="text-sm text-gray-600 mb-2">รายการสินค้า</p>
+                                            {order.items.map((item, index) => (
+                                            <div key={index} className="flex justify-between text-sm py-1">
+                                                <span>{item.name} x{item.qty}</span>
+                                                <span>{(item.price * item.qty).toLocaleString()} ฿</span>
+                                            </div>
+                                            ))}
+                                            <div className="border-t pt-2 mt-2">
+                                            <div className="flex justify-between font-semibold">
+                                                <span>รวมทั้งหมด</span>
+                                                <span className="text-green-600">{order.total.toLocaleString()} ฿</span>
+                                            </div>
+                                            </div>
+                                        </div>
+
+                                        {order.note && (
+                                            <div className="mb-4">
+                                            <p className="text-sm text-gray-600">หมายเหตุ</p>
+                                            <p className="text-sm bg-yellow-50 p-2 rounded">{order.note}</p>
+                                            </div>
+                                        )}
+
+                                        {order.status === 'approved' && (
+                                            <div className="text-sm text-green-600">
+                                            ✅ อนุมัติโดย {order.approvedBy} เมื่อ {order.approvedTime}
+                                            </div>
+                                        )}
+
+                                        {order.status === 'rejected' && (
+                                            <div className="text-sm text-red-600">
+                                            ❌ ปฏิเสธโดย {order.rejectedBy} เมื่อ {order.rejectedTime}
+                                            <br />เหตุผล: {order.rejectedReason}
+                                            </div>
+                                        )}
+                                        </div>
+
+                                        <div className="flex flex-col gap-2 ml-4">
+                                        <Button size="sm" variant="outline">
+                                            <Eye className="w-4 h-4 mr-2" />
+                                            ดูสลิป
+                                        </Button>
+
+                                        {order.status === 'pending' && (
+                                            <>
+                                            <Button
+                                                size="sm"
+                                                className="bg-green-600 hover:bg-green-700"
+                                                onClick={() => handleApprove(order.id)}
+                                            >
+                                                <CheckCircle className="w-4 h-4 mr-2" />
+                                                อนุมัติ
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="destructive"
+                                                onClick={() => {
+                                                const reason = prompt('เหตุผลในการปฏิเสธ:', '');
+                                                if (reason !== null) {
+                                                    handleReject(order.id, reason || 'ไม่ระบุเหตุผล');
+                                                }
+                                                }}
+                                            >
+                                                <XCircle className="w-4 h-4 mr-2" />
+                                                ปฏิเสธ
+                                            </Button>
+                                            </>
+                                        )}
+                                        </div>
+                                    </div>
+                                    </CardContent>
+                                </Card>
+                                ))
+                            )}
+                        </div>
+
+                        {stats.pending > 0 && (
+                            <Card className="mt-6 border-yellow-200 bg-yellow-50">
+                                <CardContent className="p-4">
+                                    <Alert>
+                                        <Bell className="w-4 h-4" />
+                                        <AlertDescription>
+                                            <div className="flex items-center justify-between">
+                                                <span>มีคำสั่งซื้อ {stats.pending} รายการรอการตรวจสอบ</span>
+                                                <Button size="sm" className="ml-4">
+                                                ตรวจสอบทั้งหมด
+                                                </Button>
+                                            </div>
+                                        </AlertDescription>
+                                    </Alert>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<AdminPanel />, document.getElementById('root'));
+    </script>
+</body>
+</html>

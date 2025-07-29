@@ -1,0 +1,290 @@
+<div class="admin-container">
+    <div class="sidebar">
+        <a href="#" onclick="showAdminSection('add-product')">Add Product</a>
+        <a href="#" onclick="showAdminSection('add-promotion')">Add Promotion</a>
+        <a href="#" onclick="showAdminSection('add-coupon')">Add Coupon</a>
+        <a href="#" onclick="showAdminSection('ranking-settings')">Ranking Settings</a>
+    </div>
+    <div class="main-content">
+        <div id="add-product" class="admin-section">
+            <h2>Add Product</h2>
+            <form id="add-product-form">
+                <input type="text" name="name_th" placeholder="Product Name (TH)" required>
+                <input type="text" name="name_en" placeholder="Product Name (EN)" required>
+                <input type="number" name="price" placeholder="Price" required>
+                <input type="text" name="category" placeholder="Category" required>
+                <input type="text" name="image_url" placeholder="Image URL" required>
+                <input type="number" name="calories" placeholder="Calories" required>
+                <label>
+                    <input type="checkbox" name="is_vegan"> Is Vegan
+                </label>
+                <label>
+                    <input type="checkbox" name="is_organic"> Is Organic
+                </label>
+                <button type="submit">Add Product</button>
+            </form>
+            <hr>
+            <h2>Existing Products</h2>
+            <input type="text" id="product-search" onkeyup="searchProducts()" placeholder="Search for products..">
+            <table id="products-table">
+                <thead>
+                    <tr>
+                        <th>Name (TH)</th>
+                        <th>Name (EN)</th>
+                        <th>Price</th>
+                        <th>Category</th>
+                    </tr>
+                </thead>
+                <tbody id="products-body">
+                    <!-- Product data will be loaded here -->
+                </tbody>
+            </table>
+        </div>
+        <div id="add-promotion" class="admin-section" style="display: none;">
+            <h2>Add Promotion</h2>
+            <form id="add-promotion-form">
+                <input type="text" name="name" placeholder="Promotion Name" required>
+                <input type="number" name="discount" placeholder="Discount Percentage" required>
+                <input type="date" name="start_date" placeholder="Start Date" required>
+                <input type="date" name="end_date" placeholder="End Date" required>
+                <button type="submit">Add Promotion</button>
+            </form>
+            <hr>
+            <h2>Existing Promotions</h2>
+            <input type="text" id="promotion-search" onkeyup="searchPromotions()" placeholder="Search for promotions..">
+            <table id="promotions-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Discount</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                    </tr>
+                </thead>
+                <tbody id="promotions-body">
+                    <!-- Promotion data will be loaded here -->
+                </tbody>
+            </table>
+        </div>
+        <div id="add-coupon" class="admin-section" style="display: none;">
+            <h2>Add Coupon</h2>
+            <form id="add-coupon-form">
+                <input type="text" name="code" placeholder="Coupon Code" required>
+                <input type="number" name="discount" placeholder="Discount Amount" required>
+                <input type="date" name="expiry_date" placeholder="Expiry Date" required>
+                <button type="submit">Add Coupon</button>
+            </form>
+            <hr>
+            <h2>Existing Coupons</h2>
+            <input type="text" id="coupon-search" onkeyup="searchCoupons()" placeholder="Search for coupons..">
+            <table id="coupons-table">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Discount</th>
+                        <th>Expiry Date</th>
+                    </tr>
+                </thead>
+                <tbody id="coupons-body">
+                    <!-- Coupon data will be loaded here -->
+                </tbody>
+            </table>
+        </div>
+        <div id="ranking-settings" class="admin-section" style="display: none;">
+            <h2>Ranking Settings</h2>
+            <!-- Ranking settings form goes here -->
+        </div>
+        <div id="send-notification" class="admin-section" style="display: none;">
+            <h2>Send Notification</h2>
+            <input type="text" id="notification-message" placeholder="Enter notification message">
+            <button onclick="sendNotification()">Send</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showAdminSection(sectionId) {
+        document.querySelectorAll('.admin-section').forEach(section => {
+            section.style.display = 'none';
+        });
+        document.getElementById(sectionId).style.display = 'block';
+    }
+
+    document.getElementById('add-product-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData.entries());
+        data.is_vegan = data.is_vegan === 'on';
+        data.is_organic = data.is_organic === 'on';
+
+        if (data.price < 0 || data.calories < 0) {
+            alert('Price and calories cannot be negative.');
+            return;
+        }
+
+        await fetch(SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'addProduct', data })
+        });
+
+        e.target.reset();
+        alert('Product added successfully!');
+    });
+
+    document.getElementById('add-promotion-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData.entries());
+
+        if (data.discount < 0) {
+            alert('Discount cannot be negative.');
+            return;
+        }
+
+        if (new Date(data.end_date) < new Date(data.start_date)) {
+            alert('End date must be after start date.');
+            return;
+        }
+
+        await fetch(SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'addPromotion', data })
+        });
+
+        e.target.reset();
+        alert('Promotion added successfully!');
+    });
+
+    document.getElementById('add-coupon-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData.entries());
+
+        if (data.discount < 0) {
+            alert('Discount cannot be negative.');
+            return;
+        }
+
+        await fetch(SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'addCoupon', data })
+        });
+
+        e.target.reset();
+        alert('Coupon added successfully!');
+    });
+
+    function sendNotification() {
+        const message = document.getElementById('notification-message').value;
+        // In a real application, you would get the user's ID from the order details.
+        const userId = 'USER_ID';
+        fetch(`${SCRIPT_URL}?action=sendNotification&userId=${userId}&message=${message}`);
+    }
+
+    async function getProductsAdmin() {
+        const response = await fetch(`${SCRIPT_URL}?action=getProducts`);
+        const products = await response.json();
+        return products;
+    }
+
+    function searchProducts() {
+        const input = document.getElementById('product-search');
+        const filter = input.value.toUpperCase();
+        const table = document.getElementById('products-table');
+        const tr = table.getElementsByTagName('tr');
+
+        for (let i = 0; i < tr.length; i++) {
+            const td = tr[i].getElementsByTagName('td')[0];
+            if (td) {
+                const txtValue = td.textContent || td.innerText;
+                if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = '';
+                } else {
+                    tr[i].style.display = 'none';
+                }
+            }
+        }
+    }
+
+    getProductsAdmin().then(products => {
+        const productsBody = document.getElementById('products-body');
+        products.forEach(product => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${product.name_th}</td>
+                <td>${product.name_en}</td>
+                <td>${product.price}</td>
+                <td>${product.category}</td>
+            `;
+            productsBody.appendChild(row);
+        });
+    });
+
+    function searchPromotions() {
+        const input = document.getElementById('promotion-search');
+        const filter = input.value.toUpperCase();
+        const table = document.getElementById('promotions-table');
+        const tr = table.getElementsByTagName('tr');
+
+        for (let i = 0; i < tr.length; i++) {
+            const td = tr[i].getElementsByTagName('td')[0];
+            if (td) {
+                const txtValue = td.textContent || td.innerText;
+                if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = '';
+                } else {
+                    tr[i].style.display = 'none';
+                }
+            }
+        }
+    }
+
+    getPromotions().then(promotions => {
+        const promotionsBody = document.getElementById('promotions-body');
+        promotions.forEach(promotion => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${promotion.name}</td>
+                <td>${promotion.discount}%</td>
+                <td>${promotion.start_date}</td>
+                <td>${promotion.end_date}</td>
+            `;
+            promotionsBody.appendChild(row);
+        });
+    });
+
+    function searchCoupons() {
+        const input = document.getElementById('coupon-search');
+        const filter = input.value.toUpperCase();
+        const table = document.getElementById('coupons-table');
+        const tr = table.getElementsByTagName('tr');
+
+        for (let i = 0; i < tr.length; i++) {
+            const td = tr[i].getElementsByTagName('td')[0];
+            if (td) {
+                const txtValue = td.textContent || td.innerText;
+                if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = '';
+                } else {
+                    tr[i].style.display = 'none';
+                }
+            }
+        }
+    }
+
+    getCoupons().then(coupons => {
+        const couponsBody = document.getElementById('coupons-body');
+        coupons.forEach(coupon => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${coupon.code}</td>
+                <td>${coupon.discount}</td>
+                <td>${coupon.expiry_date}</td>
+            `;
+            couponsBody.appendChild(row);
+        });
+    });
+</script>

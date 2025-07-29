@@ -1,0 +1,84 @@
+<div class="order-form">
+    <h3 style="margin-bottom: 20px; color: #10B981;">📝 ข้อมูลการสั่งซื้อ</h3>
+
+    <div class="form-group">
+        <label class="form-label">ชื่อ-นามสกุล</label>
+        <input type="text" class="form-input" id="customer-name" placeholder="กรุณาใส่ชื่อ">
+    </div>
+
+    <div class="form-group">
+        <label class="form-label">เบอร์โทรศัพท์</label>
+        <input type="tel" class="form-input" id="customer-phone" placeholder="08x-xxx-xxxx">
+    </div>
+
+    <div class="form-group">
+        <label class="form-label">วิธีรับอาหาร</label>
+        <div class="delivery-options">
+            <div class="delivery-option selected" onclick="selectDelivery('pickup')">
+                <div>🏪 รับที่ร้าน</div>
+                <small>ฟรี</small>
+            </div>
+            <div class="delivery-option" onclick="selectDelivery('delivery')">
+                <div>🚚 ส่งถึงที่</div>
+                <small>+30 บาท</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group" id="address-group" style="display: none;">
+        <label class="form-label">ที่อยู่จัดส่ง</label>
+        <textarea class="form-input" id="delivery-address" rows="3" placeholder="กรุณาใส่ที่อยู่สำหรับจัดส่ง"></textarea>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label">หมายเหตุพิเศษ</label>
+        <textarea class="form-input" id="order-notes" rows="2" placeholder="เช่น ไม่ใส่ผักชี, เพิ่มซอส"></textarea>
+    </div>
+</div>
+
+<div class="order-summary">
+    <h3 style="margin-bottom: 15px; color: #10B981;">🧾 สรุปคำสั่งซื้อ</h3>
+    <div id="order-items"></div>
+    <div class="summary-row">
+        <span>ค่าอาหาร:</span>
+        <span id="subtotal">฿0</span>
+    </div>
+    <div class="summary-row">
+        <span>ค่าจัดส่ง:</span>
+        <span id="delivery-fee">฿0</span>
+    </div>
+    <div class="summary-row summary-total">
+        <span>รวมทั้งสิ้น:</span>
+        <span id="total-amount">฿0</span>
+    </div>
+</div>
+
+<button class="submit-order" onclick="submitOrderAndPay()">
+    💳 ยืนยันและชำระเงิน
+</button>
+
+<div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div>กำลังประมวลผล...</div>
+</div>
+
+<script>
+let selectedDelivery = 'pickup';
+
+function selectDelivery(type) {
+    selectedDelivery = type;
+    document.querySelectorAll('.delivery-option').forEach(option => {
+        option.classList.remove('selected');
+    });
+    event.target.closest('.delivery-option').classList.add('selected');
+
+    const addressGroup = document.getElementById('address-group');
+    if (type === 'delivery') {
+        addressGroup.style.display = 'block';
+    } else {
+        addressGroup.style.display = 'none';
+    }
+
+    updateOrderSummary();
+}
+</script>

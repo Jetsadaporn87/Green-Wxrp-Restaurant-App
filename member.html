@@ -1,0 +1,85 @@
+<link rel="stylesheet" href="assets/css/membership-cards.css">
+
+<div id="my-profile">
+    <div class="loading" id="profile-loading">
+        <div class="spinner"></div>
+    </div>
+    <div class="profile-header" style="display: none;">
+        <img id="profile-picture" src="" alt="Profile Picture" class="profile-picture">
+        <h2 id="display-name" class="display-name"></h2>
+    </div>
+
+    <div id="membership-card"></div>
+
+    <div class="profile-details" style="display: none;">
+        <div class="detail-row">
+            <span>Points:</span>
+            <span id="points">0</span>
+        </div>
+        <div class="detail-row">
+            <span>Membership Tier:</span>
+            <span id="tier"></span>
+        </div>
+    </div>
+</div>
+
+<script>
+    liff.getProfile().then(profile => {
+        document.getElementById('profile-loading').style.display = 'block';
+        document.getElementById('profile-picture').src = profile.pictureUrl;
+        document.getElementById('display-name').textContent = profile.displayName;
+
+        getCustomer(profile.userId).then(customer => {
+            document.getElementById('profile-loading').style.display = 'none';
+            document.querySelector('.profile-header').style.display = 'block';
+            document.querySelector('.profile-details').style.display = 'block';
+
+            if (customer && !customer.error) {
+                let tier = 'Silver';
+                if (customer.total_purchase >= 10000) {
+                    tier = 'Diamond';
+                } else if (customer.total_purchase >= 2499) {
+                    tier = 'Gold';
+                }
+
+                document.getElementById('points').textContent = customer.stamps;
+                document.getElementById('tier').textContent = tier;
+
+                const membershipCard = document.getElementById('membership-card');
+                let cardClass = '';
+                let tierIcon = '';
+
+                switch (tier) {
+                    case 'Silver':
+                        cardClass = 'silver-card';
+                        tierIcon = '🥈';
+                        break;
+                    case 'Gold':
+                        cardClass = 'gold-card';
+                        tierIcon = '🥇';
+                        break;
+                    case 'Diamond':
+                        cardClass = 'diamond-card';
+                        tierIcon = '💎';
+                        break;
+                }
+
+                membershipCard.innerHTML = `
+                    <div class="card ${cardClass}">
+                        <div class="card-header">
+                            <div class="card-logo">Green Wxrp</div>
+                            <div class="card-tier-icon">${tierIcon}</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-name">${customer.name}</div>
+                            <div class="card-tier">${tier} Member</div>
+                        </div>
+                        <div class="card-footer">
+                            <div class="card-points">${customer.stamps} Points</div>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+    });
+</script>
